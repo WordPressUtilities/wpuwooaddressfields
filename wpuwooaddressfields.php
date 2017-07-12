@@ -3,7 +3,7 @@
 Plugin Name: WPU Woo Address Fields
 Plugin URI: http://github.com/Darklg/WPUtilities
 Description: Quickly add fields to WooCommerce addresses : handle display & save
-Version: 0.1.0
+Version: 0.2.0
 Author: Darklg
 Author URI: http://darklg.me/
 License: MIT License
@@ -16,6 +16,7 @@ class WPUWooAddressFields {
     public function __construct() {
         add_action('plugins_loaded', array(&$this, 'plugins_loaded'));
         add_filter('woocommerce_default_address_fields', array(&$this, 'add_default_address_fields'));
+        add_filter('woocommerce_customer_meta_fields', array(&$this, 'add_customer_meta_fields'), 1);
     }
 
     public function plugins_loaded() {
@@ -39,6 +40,9 @@ class WPUWooAddressFields {
             if (!isset($field['placeholder'])) {
                 $field['placeholder'] = 'text';
             }
+            if (!isset($field['options']) && $field['type'] == 'select') {
+                $field['options'] = array();
+            }
         }
 
         return $fields;
@@ -48,7 +52,6 @@ class WPUWooAddressFields {
         foreach ($this->fields as $id => $field) {
             if (isset($field['add_top'])) {
                 /* Insert at the top */
-                unset($field['add_top']);
                 $address_fields = array($id => $field) + $address_fields;
             } elseif (isset($field['remove'])) {
                 /* Remove field */
@@ -61,6 +64,38 @@ class WPUWooAddressFields {
             }
         }
         return $address_fields;
+    }
+
+    public function add_customer_meta_fields($fields) {
+
+        foreach ($this->fields as $id => $field) {
+            foreach ($fields as $address_type => $address_fields) {
+                $field_id = $address_type . '_' . $id;
+                $field_item = array(
+                    'label' => $field['label'],
+                    'description' => ''
+                );
+                if ($field['type'] == 'select') {
+                    $field_item['type'] = 'select';
+                    $field_item['options'] = $field['options'];
+                }
+
+                if (isset($field['add_top'])) {
+                    /* Insert at the top */
+                    $fields[$address_type]['fields'] = array($field_id => $field_item) + $fields[$address_type]['fields'];
+                } elseif (isset($field['remove'])) {
+                    /* Remove field */
+                    if (isset($fields[$address_type]['fields'][$field_id])) {
+                        unset($fields[$address_type]['fields'][$field_id]);
+                    }
+                } else {
+                    /* Insert at the end */
+                    $fields[$address_type]['fields'][$field_id] = $field_item;
+                }
+            }
+        }
+
+        return $fields;
     }
 
 }
