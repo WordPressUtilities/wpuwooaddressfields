@@ -3,7 +3,7 @@
 Plugin Name: WPU Woo Address Fields
 Plugin URI: http://github.com/Darklg/WPUtilities
 Description: Quickly add fields to WooCommerce addresses : handle display & save
-Version: 0.2.0
+Version: 0.3.0
 Author: Darklg
 Author URI: http://darklg.me/
 License: MIT License
@@ -14,13 +14,25 @@ class WPUWooAddressFields {
     private $fields = array();
 
     public function __construct() {
-        add_action('plugins_loaded', array(&$this, 'plugins_loaded'));
-        add_filter('woocommerce_default_address_fields', array(&$this, 'add_default_address_fields'));
-        add_filter('woocommerce_customer_meta_fields', array(&$this, 'add_customer_meta_fields'), 1);
+        add_action('plugins_loaded', array(&$this, 'plugins_loaded'), 50);
+
     }
 
     public function plugins_loaded() {
         $this->fields = $this->set_fields(apply_filters('wpuwooaddressfields_fields', array()));
+
+        $customer_addresses = apply_filters('woocommerce_my_account_get_addresses', array(
+            'shipping' => 'shipping',
+            'billing' => 'billing'
+        ));
+
+        /* Edit fields */
+        foreach ($customer_addresses as $type => $address_name) {
+            add_filter('woocommerce_' . $type . '_fields', array(&$this, 'add_default_address_fields'), 50, 2);
+        }
+
+        /* Edit fields in admin user profile */
+        add_filter('woocommerce_customer_meta_fields', array(&$this, 'add_customer_meta_fields'), 50, 1);
     }
 
     public function set_fields($fields) {
@@ -40,6 +52,12 @@ class WPUWooAddressFields {
             if (!isset($field['placeholder'])) {
                 $field['placeholder'] = 'text';
             }
+            if (!isset($field['section'])) {
+                $field['section'] = array('any');
+            }
+            if (!is_array($field['section'])) {
+                $field['section'] = array($field['section']);
+            }
             if (!isset($field['options']) && $field['type'] == 'select') {
                 $field['options'] = array();
             }
@@ -49,7 +67,13 @@ class WPUWooAddressFields {
     }
 
     public function add_default_address_fields($address_fields) {
+
+        $current_address_type = str_replace(array('woocommerce_', '_fields'), '', current_filter());
+
         foreach ($this->fields as $id => $field) {
+            if (!in_array($current_address_type, $field['section']) && !in_array('any', $field['section'])) {
+                continue;
+            }
             if (isset($field['add_top'])) {
                 /* Insert at the top */
                 $address_fields = array($id => $field) + $address_fields;
@@ -70,6 +94,9 @@ class WPUWooAddressFields {
 
         foreach ($this->fields as $id => $field) {
             foreach ($fields as $address_type => $address_fields) {
+                if (!in_array($address_type, $field['section']) && !in_array('any', $field['section'])) {
+                    continue;
+                }
                 $field_id = $address_type . '_' . $id;
                 $field_item = array(
                     'label' => $field['label'],
