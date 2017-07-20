@@ -3,7 +3,7 @@
 Plugin Name: WPU Woo Address Fields
 Plugin URI: http://github.com/Darklg/WPUtilities
 Description: Quickly add fields to WooCommerce addresses : handle display & save
-Version: 0.3.0
+Version: 0.3.1
 Author: Darklg
 Author URI: http://darklg.me/
 License: MIT License
@@ -76,7 +76,7 @@ class WPUWooAddressFields {
             }
             if (isset($field['add_top'])) {
                 /* Insert at the top */
-                $address_fields = array($id => $field) + $address_fields;
+                $address_fields = array($current_address_type . '_' . $id => $field) + $address_fields;
             } elseif (isset($field['remove'])) {
                 /* Remove field */
                 if (isset($address_fields[$id])) {
